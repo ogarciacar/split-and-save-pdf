@@ -21,44 +21,48 @@ func removeTimestampFromLogs() {
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 }
 
-func (*PDF) Save(pdfData []byte, filename string) {
+func (*PDF) Save(pdfData []byte, filename string) error {
 
 	removeTimestampFromLogs()
 
-	log.Printf("Saving PDF as %s\n", filename)
+	log.Printf("Save PDF %s\n", filename)
 
 	err := os.WriteFile(filename, pdfData, 0644)
 	if err != nil {
 		log.Printf("error: %s\n", err)
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
-func (*PDF) Split(filename string) {
+func (*PDF) Split(filename string) error {
 
 	removeTimestampFromLogs()
 
-	log.Printf("Splitting %s into pages\n", filename)
+	log.Printf("Split PDF %s\n", filename)
 
 	outputFilePrefix := fmt.Sprintf("%s_", strings.TrimSuffix(filename, ".pdf"))
 	cmd := exec.Command("pdftk", fmt.Sprintf("./%s", filename), "burst", "output", outputFilePrefix)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("error: %s\n", err)
+		return err
 	}
 
-	log.Printf("PDF split completed %s %s\n", filename, out)
+	log.Printf("PDF split done %s %s\n", filename, out)
+	return nil
 }
 
 func (*PDF) Read(filename string) []byte {
 
 	removeTimestampFromLogs()
 
-	log.Printf("Reading PDF bytes from %s\n", filename)
+	log.Printf("Read PDF %s\n", filename)
 	pdfFile, err := os.Open(filename)
 	if err != nil {
 		log.Printf("error: %s\n", err)
-		os.Exit(1)
+		return make([]byte, 0)
 	}
 	defer pdfFile.Close()
 
@@ -66,7 +70,7 @@ func (*PDF) Read(filename string) []byte {
 
 	if err != nil {
 		log.Printf("error: %s\n", err)
-		os.Exit(1)
+		return make([]byte, 0)
 	}
 
 	return fileData
