@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"go.k6.io/k6/js/modules"
@@ -36,22 +37,40 @@ func (*PDF) Save(pdfData []byte, filename string) error {
 	return nil
 }
 
-func (*PDF) Split(filename string) error {
+func (*PDF) Split(filename string) int {
 
 	removeTimestampFromLogs()
 
 	log.Printf("Split PDF %s\n", filename)
 
 	outputFilePrefix := fmt.Sprintf("%s_", strings.TrimSuffix(filename, ".pdf"))
+
 	cmd := exec.Command("pdftk", fmt.Sprintf("./%s", filename), "burst", "output", outputFilePrefix)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("error: %s\n", err)
-		return err
+		return 0
 	}
 
 	log.Printf("PDF split done %s %s\n", filename, out)
-	return nil
+
+	numberOfPagesCmdStr := fmt.Sprintf("pdftk %s dump_data | grep NumberOfPages | awk -F ': ' '{print $2}' | tr -d '\n'", filename)
+
+	out, err = exec.Command("bash", "-c", numberOfPagesCmdStr).CombinedOutput()
+	if err != nil {
+		log.Printf("error: %s\n", err)
+		return 0
+	}
+
+	byteToInt, err := strconv.Atoi(string(out))
+	if err != nil {
+		log.Printf("error: %s\n", err)
+		return 0
+	}
+
+	log.Printf("%s has %d pages\n", filename, byteToInt)
+
+	return byteToInt
 }
 
 func (*PDF) Read(filename string) []byte {
